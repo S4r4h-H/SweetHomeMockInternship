@@ -356,21 +356,28 @@ public class HomePrintableComponent extends JComponent implements Printable {
         furnitureFilter = furnitureTable.getFurnitureFilter();
         furnitureTable.setFurnitureFilter(new FurnitureTable.FurnitureFilter() {
             public boolean include(Home home, HomePieceOfFurniture piece) {
-              // Print only furniture at selected level when the plan or the 3D view is printed
-              return (furnitureFilter == null || furnitureFilter.include(home, piece))
-                  && piece.isAtLevel(selectedLevel)
-                  && (piece.getLevel() == null || piece.getLevel().isViewable());
+                // Print furniture of EVERY viewable level when the plan or the 3D view is printed
+                return (furnitureFilter == null || furnitureFilter.include(home, piece))
+                        && (piece.getLevel() == null || piece.getLevel().isViewable()); // <--- REMOVED THE LEVEL CHECK
             }
           });
       } else {
         furnitureFilter = null;
       }
-      // Try to print next furniture view page      
-      pageExists = ((Printable)furnitureView).print(g2D, pageFormat, page);
-      if (furnitureTable != null) {
-        // Restore previous filter
-        ((FurnitureTable)furnitureView).setFurnitureFilter(furnitureFilter);
-      }
+        try {
+            if (furnitureView instanceof FurnitureTable
+                    && !this.home.getLevels().isEmpty()) {
+                // Add a Level column so rows from different levels are distinguishable
+                pageExists = ((FurnitureTable)furnitureView).printWithLevelColumn(g2D, pageFormat, page);
+            } else {
+                pageExists = ((Printable)furnitureView).print(g2D, pageFormat, page);
+            }
+        } finally {
+            if (furnitureTable != null) {
+                // Restore previous filter
+                furnitureTable.setFurnitureFilter(furnitureFilter);
+            }
+        }
       if (pageExists == PAGE_EXISTS
           && !this.printablePages.contains(page)) {
         this.printablePages.add(page);
